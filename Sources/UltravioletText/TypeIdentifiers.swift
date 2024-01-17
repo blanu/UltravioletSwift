@@ -2,163 +2,27 @@
 //  TypeIdentifiers.swift
 //
 //
-//  Created by the Daydream Compiler on 2024-01-06 17:49:38 +0000.
+//  Created by the Daydream Compiler on 2024-01-16 23:32:18 +0000.
 //
 
 import Foundation
 
 import BigNumber
 import Datable
+import Daydream
 import SwiftHexTools
 import Text
-
-extension Bool: MaybeDatable
-{
-    public var data: Data
-    {
-        if self
-        {
-            return UInt8(0).data
-        }
-        else
-        {
-            return UInt8(1).data
-        }
-    }
-
-    public init?(data: Data)
-    {
-        guard data.count == 1 else
-        {
-            return nil
-        }
-
-        if data.count == 0
-        {
-            self = false
-        }
-        else if data.count == 1
-        {
-            self = true
-        }
-        else
-        {
-            return nil
-        }
-    }
-}
-
-extension Data
-{
-    public func popVarint() -> (BInt, Data)?
-    {
-        var working: Data = data
-
-        guard working.count > 0 else
-        {
-            return nil
-        }
-
-        guard let firstByte = working.first else
-        {
-            return nil
-        }
-        working = working.dropFirst()
-
-        let count = Int(firstByte)
-
-        guard working.count >= count else
-        {
-            return nil
-        }
-
-        let next: Data
-        if count == 1
-        {
-            guard let first = working.first else
-            {
-                return nil
-            }
-
-            next = Data(array: [first])
-
-            working = working.dropFirst()
-        }
-        else
-        {
-            next = Data(working[0..<count])
-            working = Data(working[count...])
-        }
-
-        let varintBytes = Data(array: [firstByte] + next)
-        guard let bint = BInt(varint: varintBytes) else
-        {
-            return nil
-        }
-
-        return (bint, working)
-    }
-
-    public func popLength() -> (Int, Data)?
-    {
-        guard let (bint, rest) = self.popVarint() else
-        {
-            return nil
-        }
-
-        guard let int = bint.asInt() else
-        {
-            return nil
-        }
-
-        return (int, rest)
-    }
-
-    public func popLengthAndSlice() -> (Data, Data)?
-    {
-        guard let (length, rest) = self.popLength() else
-        {
-            return nil
-        }
-
-        guard length <= rest.count else
-        {
-            return nil
-        }
-
-        let head = Data(rest[0..<length])
-        let tail = Data(rest[length...])
-
-        return (head, tail)
-    }
-
-    public func pushVarint(bint: BInt) -> Data
-    {
-        return bint.varint + self
-    }
-
-    public func pushLength() -> Data
-    {
-        let bint = BInt(self.count)
-        return self.pushVarint(bint: bint)
-    }
-}
+import Transmission
 
 public enum TypeIdentifiers: Int
 {
-    public var varint: Data
+    public var bint: BInt
     {
-        let bint = BInt(self.rawValue)
-        return bint.varint
+        return BInt(self.rawValue)
     }
 
-    public init?(varint: Data)
+    public init?(bint: BInt)
     {
-        guard let bint = BInt(varint: varint) else
-        {
-            return nil
-        }
-
         guard let int = bint.asInt() else
         {
             return nil
@@ -171,58 +35,121 @@ public enum TypeIdentifiers: Int
     case BoolType = 6
     case BooleanType = 7
     case DataType = 8
-    case FalseType = 9
-    case IntType = 10
-    case ListVarintType = 11
-    case MutableTextType = 12
-    case NothingType = 13
-    case StringType = 14
-    case TextType = 15
-    case TextListType = 16
-    case TrueType = 17
-    case VarintType = 18
-    case becomFirstType = 19
-    case becomeType = 20
-    case becomeDropFirstType = 21
-    case becomeLastType = 22
-    case becomeReverseType = 23
-    case becomeTrimmedType = 24
-    case becomeUppercaseType = 25
-    case becomeUppercaseFirstLetterType = 26
-    case convertFromBase64Type = 27
-    case convertFromHexType = 28
-    case convertToBase64Type = 29
-    case convertToHexType = 30
-    case countType = 31
-    case count_returnType = 32
-    case dropFirstType = 33
-    case dropFirst_returnType = 34
-    case fanType = 35
-    case fan_returnType = 36
-    case firstType = 37
-    case first_returnType = 38
-    case isEmptyType = 39
-    case isEmpty_returnType = 40
-    case lastType = 41
-    case last_returnType = 42
-    case reverseType = 43
-    case reverse_returnType = 44
-    case toBase64Type = 45
-    case toBase64_returnType = 46
-    case toHexType = 47
-    case toHex_returnType = 48
-    case toTextType = 49
-    case toText_returnType = 50
-    case toUTF8DataType = 51
-    case toUTF8Data_returnType = 52
-    case toUTF8StringType = 53
-    case toUTF8String_returnType = 54
-    case trimType = 55
-    case trim_returnType = 56
-    case uppercaseType = 57
-    case uppercaseFirstLetterType = 58
-    case uppercaseFirstLetter_returnType = 59
-    case uppercase_returnType = 60
+    case ErrorType = 9
+    case FalseType = 10
+    case IntType = 11
+    case ListVarintType = 12
+    case MutableTextType = 13
+    case MutableTextRequestType = 14
+    case MutableTextResponseType = 15
+    case NothingType = 16
+    case StringType = 17
+    case TextType = 18
+    case TextListType = 19
+    case TrueType = 20
+    case VarintType = 21
+    case becomeDropFirstType = 22
+    case becomeDropFirst_requestType = 23
+    case becomeDropFirst_responseType = 24
+    case becomeFirstType = 25
+    case becomeFirst_requestType = 26
+    case becomeFirst_responseType = 27
+    case becomeLastType = 28
+    case becomeLast_requestType = 29
+    case becomeLast_responseType = 30
+    case becomeReverseType = 31
+    case becomeReverse_requestType = 32
+    case becomeReverse_responseType = 33
+    case becomeTrimmedType = 34
+    case becomeTrimmed_requestType = 35
+    case becomeTrimmed_responseType = 36
+    case becomeUppercaseType = 37
+    case becomeUppercaseFirstLetterType = 38
+    case becomeUppercaseFirstLetter_requestType = 39
+    case becomeUppercaseFirstLetter_responseType = 40
+    case becomeUppercase_requestType = 41
+    case becomeUppercase_responseType = 42
+    case convertFromBase64Type = 43
+    case convertFromBase64_requestType = 44
+    case convertFromBase64_responseType = 45
+    case convertFromHexType = 46
+    case convertFromHex_requestType = 47
+    case convertFromHex_responseType = 48
+    case convertToBase64Type = 49
+    case convertToBase64_requestType = 50
+    case convertToBase64_responseType = 51
+    case convertToHexType = 52
+    case convertToHex_requestType = 53
+    case convertToHex_responseType = 54
+    case countType = 55
+    case count_requestType = 56
+    case count_responseType = 57
+    case dropFirstType = 58
+    case dropFirst_requestType = 59
+    case dropFirst_responseType = 60
+    case dropFirst_response_valueType = 61
+    case fanType = 62
+    case fan_requestType = 63
+    case fan_responseType = 64
+    case firstType = 65
+    case first_requestType = 66
+    case first_responseType = 67
+    case first_response_valueType = 68
+    case isEmptyType = 69
+    case isEmpty_requestType = 70
+    case isEmpty_responseType = 71
+    case lastType = 72
+    case last_requestType = 73
+    case last_responseType = 74
+    case last_response_valueType = 75
+    case reverseType = 76
+    case reverse_requestType = 77
+    case reverse_responseType = 78
+    case toBase64Type = 79
+    case toBase64_requestType = 80
+    case toBase64_responseType = 81
+    case toHexType = 82
+    case toHex_requestType = 83
+    case toHex_responseType = 84
+    case toTextType = 85
+    case toText_requestType = 86
+    case toText_responseType = 87
+    case toUTF8DataType = 88
+    case toUTF8Data_requestType = 89
+    case toUTF8Data_responseType = 90
+    case toUTF8StringType = 91
+    case toUTF8String_requestType = 92
+    case toUTF8String_responseType = 93
+    case trimType = 94
+    case trim_requestType = 95
+    case trim_responseType = 96
+    case uppercaseType = 97
+    case uppercaseFirstLetterType = 98
+    case uppercaseFirstLetter_requestType = 99
+    case uppercaseFirstLetter_responseType = 100
+    case uppercaseFirstLetter_response_valueType = 101
+    case uppercase_requestType = 102
+    case uppercase_responseType = 103
+}
+
+extension TypeIdentifiers: Daydreamable
+{
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let type = Self(bint: bint) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        self = type
+    }
+
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.bint.saveDaydream(connection)
+    }
 }
 
 public enum Value: Equatable, Codable
@@ -230,111 +157,141 @@ public enum Value: Equatable, Codable
     case BoolBuiltin(Bool)
     case Boolean(BooleanValue)
     case DataBuiltin(Data)
+    case Error(ErrorValue)
     case False
     case IntBuiltin(Int)
     case ListVarint([BInt])
     case MutableText(MutableTextValue)
+    case MutableTextRequest(MutableTextRequestValue)
+    case MutableTextResponse(MutableTextResponseValue)
     case Nothing
     case StringBuiltin(String)
     case TextBuiltin(Text)
     case TextList([Text])
     case True
     case Varint(BInt)
-    case becomFirst
-    case become(becomeValue)
     case becomeDropFirst
+    case becomeDropFirst_request
+    case becomeDropFirst_response(becomeDropFirst_responseValue)
+    case becomeFirst
+    case becomeFirst_request
+    case becomeFirst_response(becomeFirst_responseValue)
     case becomeLast
+    case becomeLast_request
+    case becomeLast_response(becomeLast_responseValue)
     case becomeReverse
+    case becomeReverse_request
+    case becomeReverse_response
     case becomeTrimmed
+    case becomeTrimmed_request
+    case becomeTrimmed_response
     case becomeUppercase
     case becomeUppercaseFirstLetter
+    case becomeUppercaseFirstLetter_request
+    case becomeUppercaseFirstLetter_response(becomeUppercaseFirstLetter_responseValue)
+    case becomeUppercase_request
+    case becomeUppercase_response
     case convertFromBase64
+    case convertFromBase64_request
+    case convertFromBase64_response(convertFromBase64_responseValue)
     case convertFromHex
+    case convertFromHex_request
+    case convertFromHex_response(convertFromHex_responseValue)
     case convertToBase64
+    case convertToBase64_request
+    case convertToBase64_response
     case convertToHex
-    case count(countValue)
-    case count_return(count_returnValue)
-    case dropFirst(dropFirstValue)
-    case dropFirst_return(dropFirst_returnValue)
-    case fan(fanValue)
-    case fan_return(fan_returnValue)
-    case first(firstValue)
-    case first_return(first_returnValue)
-    case isEmpty(isEmptyValue)
-    case isEmpty_return(isEmpty_returnValue)
-    case last(lastValue)
-    case last_return(last_returnValue)
-    case reverse(reverseValue)
-    case reverse_return(reverse_returnValue)
-    case toBase64(toBase64Value)
-    case toBase64_return(toBase64_returnValue)
-    case toHex(toHexValue)
-    case toHex_return(toHex_returnValue)
-    case toText(toTextValue)
-    case toText_return(toText_returnValue)
-    case toUTF8Data(toUTF8DataValue)
-    case toUTF8Data_return(toUTF8Data_returnValue)
-    case toUTF8String(toUTF8StringValue)
-    case toUTF8String_return(toUTF8String_returnValue)
-    case trim(trimValue)
-    case trim_return(trim_returnValue)
-    case uppercase(uppercaseValue)
-    case uppercaseFirstLetter(uppercaseFirstLetterValue)
-    case uppercaseFirstLetter_return(uppercaseFirstLetter_returnValue)
-    case uppercase_return(uppercase_returnValue)
+    case convertToHex_request
+    case convertToHex_response
+    case count
+    case count_request
+    case count_response(count_responseValue)
+    case dropFirst
+    case dropFirst_request
+    case dropFirst_response(dropFirst_responseValue)
+    case dropFirst_response_value(dropFirst_response_valueValue)
+    case fan
+    case fan_request
+    case fan_response(fan_responseValue)
+    case first
+    case first_request
+    case first_response(first_responseValue)
+    case first_response_value(first_response_valueValue)
+    case isEmpty
+    case isEmpty_request
+    case isEmpty_response(isEmpty_responseValue)
+    case last
+    case last_request
+    case last_response(last_responseValue)
+    case last_response_value(last_response_valueValue)
+    case reverse
+    case reverse_request
+    case reverse_response(reverse_responseValue)
+    case toBase64
+    case toBase64_request
+    case toBase64_response(toBase64_responseValue)
+    case toHex
+    case toHex_request
+    case toHex_response(toHex_responseValue)
+    case toText
+    case toText_request
+    case toText_response(toText_responseValue)
+    case toUTF8Data
+    case toUTF8Data_request
+    case toUTF8Data_response(toUTF8Data_responseValue)
+    case toUTF8String
+    case toUTF8String_request
+    case toUTF8String_response(toUTF8String_responseValue)
+    case trim
+    case trim_request
+    case trim_response(trim_responseValue)
+    case uppercase
+    case uppercaseFirstLetter
+    case uppercaseFirstLetter_request
+    case uppercaseFirstLetter_response(uppercaseFirstLetter_responseValue)
+    case uppercaseFirstLetter_response_value(uppercaseFirstLetter_response_valueValue)
+    case uppercase_request
+    case uppercase_response(uppercase_responseValue)
 }
 
-public enum BooleanValue: Equatable, Codable
+public enum BooleanValue: Equatable, Codable, Daydreamable
 {
-    public var data: Data
+    public func saveDaydream(_ connection: Transmission.Connection) throws
     {
         switch self
         {
             case .True:
-                return TypeIdentifiers.TrueType.varint
+                try TypeIdentifiers.TrueType.saveDaydream(connection)
 
             case .False:
-                return TypeIdentifiers.FalseType.varint
+                try TypeIdentifiers.FalseType.saveDaydream(connection)
         }
     }
 
-    public init?(data: Data)
+    public init(daydream connection: Transmission.Connection) throws
     {
-        guard let (bint, rest) = data.popVarint() else
-        {
-            return nil
-        }
+        let bint = try BInt(daydream: connection)
 
         guard let int = bint.asInt() else
         {
-            return nil
+            throw DaydreamError.conversionFailed
         }
 
         guard let type = TypeIdentifiers(rawValue: int) else
         {
-            return nil
+            throw DaydreamError.conversionFailed
         }
 
         switch type
         {
             case .TrueType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
                 self = .True
 
             case .FalseType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
                 self = .False
 
             default:
-                return nil
+                throw DaydreamError.conversionFailed
         }
     }
 
@@ -342,1246 +299,21 @@ public enum BooleanValue: Equatable, Codable
     case False
 }
 
-extension [BInt]
-{
-    public var data: Data
-    {
-        var result: Data = Data()
-        result.append(TypeIdentifiers.ListVarintType.varint)
-        result.append(BInt(self.count).varint)
-
-        for item in self
-        {
-            result.append(item.data)
-        }
-
-        return result
-    }
-
-    public init?(data: Data)
-    {
-        var results: [BInt] = []
-        var working = data
-
-        while working.count > 0
-        {
-            guard let (valueData, rest) = working.popLengthAndSlice() else
-            {
-                self = results
-                return
-            }
-
-            guard let value = BInt(data: valueData) else
-            {
-                return nil
-            }
-
-            results.append(value)
-            working = rest
-        }
-
-        self = results
-    }
-}
-
-public enum MutableTextValue: Equatable, Codable
-{
-    public var data: Data
-    {
-        switch self
-        {
-            case .toUTF8String(let subtype):
-                return TypeIdentifiers.toUTF8StringType.varint + subtype.data
-
-            case .toText(let subtype):
-                return TypeIdentifiers.toTextType.varint + subtype.data
-
-            case .toUTF8Data(let subtype):
-                return TypeIdentifiers.toUTF8DataType.varint + subtype.data
-
-            case .become(let subtype):
-                return TypeIdentifiers.becomeType.varint + subtype.data
-
-            case .toHex(let subtype):
-                return TypeIdentifiers.toHexType.varint + subtype.data
-
-            case .convertFromHex:
-                return TypeIdentifiers.convertFromHexType.varint
-
-            case .convertToHex:
-                return TypeIdentifiers.convertToHexType.varint
-
-            case .toBase64(let subtype):
-                return TypeIdentifiers.toBase64Type.varint + subtype.data
-
-            case .convertFromBase64:
-                return TypeIdentifiers.convertFromBase64Type.varint
-
-            case .convertToBase64:
-                return TypeIdentifiers.convertToBase64Type.varint
-
-            case .trim(let subtype):
-                return TypeIdentifiers.trimType.varint + subtype.data
-
-            case .becomeTrimmed:
-                return TypeIdentifiers.becomeTrimmedType.varint
-
-            case .count(let subtype):
-                return TypeIdentifiers.countType.varint + subtype.data
-
-            case .isEmpty(let subtype):
-                return TypeIdentifiers.isEmptyType.varint + subtype.data
-
-            case .dropFirst(let subtype):
-                return TypeIdentifiers.dropFirstType.varint + subtype.data
-
-            case .becomeDropFirst:
-                return TypeIdentifiers.becomeDropFirstType.varint
-
-            case .uppercase(let subtype):
-                return TypeIdentifiers.uppercaseType.varint + subtype.data
-
-            case .becomeUppercase:
-                return TypeIdentifiers.becomeUppercaseType.varint
-
-            case .uppercaseFirstLetter(let subtype):
-                return TypeIdentifiers.uppercaseFirstLetterType.varint + subtype.data
-
-            case .becomeUppercaseFirstLetter:
-                return TypeIdentifiers.becomeUppercaseFirstLetterType.varint
-
-            case .first(let subtype):
-                return TypeIdentifiers.firstType.varint + subtype.data
-
-            case .becomFirst:
-                return TypeIdentifiers.becomFirstType.varint
-
-            case .last(let subtype):
-                return TypeIdentifiers.lastType.varint + subtype.data
-
-            case .becomeLast:
-                return TypeIdentifiers.becomeLastType.varint
-
-            case .fan(let subtype):
-                return TypeIdentifiers.fanType.varint + subtype.data
-
-            case .reverse(let subtype):
-                return TypeIdentifiers.reverseType.varint + subtype.data
-
-            case .becomeReverse:
-                return TypeIdentifiers.becomeReverseType.varint
-        }
-    }
-
-    public init?(data: Data)
-    {
-        guard let (bint, rest) = data.popVarint() else
-        {
-            return nil
-        }
-
-        guard let int = bint.asInt() else
-        {
-            return nil
-        }
-
-        guard let type = TypeIdentifiers(rawValue: int) else
-        {
-            return nil
-        }
-
-        switch type
-        {
-            case .toUTF8StringType:
-                guard let value = toUTF8StringValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .toUTF8String(value)
-                return
-
-            case .toTextType:
-                guard let value = toTextValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .toText(value)
-                return
-
-            case .toUTF8DataType:
-                guard let value = toUTF8DataValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .toUTF8Data(value)
-                return
-
-            case .becomeType:
-                guard let value = becomeValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .become(value)
-                return
-
-            case .toHexType:
-                guard let value = toHexValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .toHex(value)
-                return
-
-            case .convertFromHexType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .convertFromHex
-
-            case .convertToHexType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .convertToHex
-
-            case .toBase64Type:
-                guard let value = toBase64Value(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .toBase64(value)
-                return
-
-            case .convertFromBase64Type:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .convertFromBase64
-
-            case .convertToBase64Type:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .convertToBase64
-
-            case .trimType:
-                guard let value = trimValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .trim(value)
-                return
-
-            case .becomeTrimmedType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .becomeTrimmed
-
-            case .countType:
-                guard let value = countValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .count(value)
-                return
-
-            case .isEmptyType:
-                guard let value = isEmptyValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .isEmpty(value)
-                return
-
-            case .dropFirstType:
-                guard let value = dropFirstValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .dropFirst(value)
-                return
-
-            case .becomeDropFirstType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .becomeDropFirst
-
-            case .uppercaseType:
-                guard let value = uppercaseValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .uppercase(value)
-                return
-
-            case .becomeUppercaseType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .becomeUppercase
-
-            case .uppercaseFirstLetterType:
-                guard let value = uppercaseFirstLetterValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .uppercaseFirstLetter(value)
-                return
-
-            case .becomeUppercaseFirstLetterType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .becomeUppercaseFirstLetter
-
-            case .firstType:
-                guard let value = firstValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .first(value)
-                return
-
-            case .becomFirstType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .becomFirst
-
-            case .lastType:
-                guard let value = lastValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .last(value)
-                return
-
-            case .becomeLastType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .becomeLast
-
-            case .fanType:
-                guard let value = fanValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .fan(value)
-                return
-
-            case .reverseType:
-                guard let value = reverseValue(data: rest) else
-                {
-                    return nil
-                }
-
-                self = .reverse(value)
-                return
-
-            case .becomeReverseType:
-                guard rest.isEmpty else
-                {
-                    return nil
-                }
-
-                self = .becomeReverse
-
-            default:
-                return nil
-        }
-    }
-
-    case toUTF8String(toUTF8StringValue)
-    case toText(toTextValue)
-    case toUTF8Data(toUTF8DataValue)
-    case become(becomeValue)
-    case toHex(toHexValue)
-    case convertFromHex
-    case convertToHex
-    case toBase64(toBase64Value)
-    case convertFromBase64
-    case convertToBase64
-    case trim(trimValue)
-    case becomeTrimmed
-    case count(countValue)
-    case isEmpty(isEmptyValue)
-    case dropFirst(dropFirstValue)
-    case becomeDropFirst
-    case uppercase(uppercaseValue)
-    case becomeUppercase
-    case uppercaseFirstLetter(uppercaseFirstLetterValue)
-    case becomeUppercaseFirstLetter
-    case first(firstValue)
-    case becomFirst
-    case last(lastValue)
-    case becomeLast
-    case fan(fanValue)
-    case reverse(reverseValue)
-    case becomeReverse
-}
-
-extension [Text]
-{
-    public var data: Data
-    {
-        var result: Data = Data()
-        result.append(TypeIdentifiers.TextListType.varint)
-        result.append(BInt(self.count).varint)
-
-        for item in self
-        {
-            result.append(item.data)
-        }
-
-        return result
-    }
-
-    public init?(data: Data)
-    {
-        var results: [Text] = []
-        var working = data
-
-        while working.count > 0
-        {
-            guard let (valueData, rest) = working.popLengthAndSlice() else
-            {
-                self = results
-                return
-            }
-
-            guard let value = Text(data: valueData) else
-            {
-                return nil
-            }
-
-            results.append(value)
-            working = rest
-        }
-
-        self = results
-    }
-}
-
-public struct becomeValue: Equatable, Codable
+public struct ErrorValue: Equatable, Codable, Daydreamable
 {
     // Public computed properties
-    public var data: Data
+    public func saveDaydream(_ connection: Transmission.Connection) throws
     {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct countValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: count_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = count_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: count_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct count_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Int
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Int(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Int)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct dropFirstValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: dropFirst_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = dropFirst_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: dropFirst_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct dropFirst_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct fanValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: fan_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = fan_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: fan_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct fan_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: [Text]
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = [Text](data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: [Text])
-    {
-        self.field1 = field1
-    }
-}
-
-public struct firstValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: first_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = first_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: first_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct first_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct isEmptyValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: isEmpty_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = isEmpty_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: isEmpty_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct isEmpty_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Bool
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Bool(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Bool)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct lastValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: last_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = last_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: last_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct last_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct reverseValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: reverse_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = reverse_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: reverse_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct reverse_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toBase64Value: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: toBase64_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = toBase64_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: toBase64_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toBase64_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toHexValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: toHex_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = toHex_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: toHex_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toHex_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toTextValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: toText_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = toText_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: toText_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toText_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toUTF8DataValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: toUTF8Data_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = toUTF8Data_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: toUTF8Data_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toUTF8Data_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1
-    }
-
-    // Public Fields
-    public let field1: Data
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        self.field1 = working
-
-        working = Data()
-    }
-
-    public init(_ field1: Data)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toUTF8StringValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: toUTF8String_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = toUTF8String_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: toUTF8String_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct toUTF8String_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
+        try self.field1.saveDaydream(connection)
     }
 
     // Public Fields
     public let field1: String
 
     // Public Inits
-    public init?(data: Data)
+    public init(daydream connection: Transmission.Connection) throws
     {
-        var working: Data = data
-
-        self.field1 = String(data: working)
-
-        working = Data()
+        self.field1 = try String(daydream: connection)
     }
 
     public init(_ field1: String)
@@ -1590,645 +322,2045 @@ public struct toUTF8String_returnValue: Equatable, Codable
     }
 }
 
-public struct trimValue: Equatable, Codable
+
+
+public enum MutableTextValue: Equatable, Codable, Daydreamable
 {
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: trim_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = trim_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: trim_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct trim_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct uppercaseValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: uppercase_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = uppercase_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: uppercase_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct uppercaseFirstLetterValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: uppercaseFirstLetter_returnValue
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = uppercaseFirstLetter_returnValue(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: uppercaseFirstLetter_returnValue)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct uppercaseFirstLetter_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-public struct uppercase_returnValue: Equatable, Codable
-{
-    // Public computed properties
-    public var data: Data
-    {
-        return self.field1.data
-    }
-
-    // Public Fields
-    public let field1: Text
-
-    // Public Inits
-    public init?(data: Data)
-    {
-        var working: Data = data
-
-        guard let fieldValue = Text(data: working) else
-        {
-            return nil
-        }
-
-        self.field1 = fieldValue
-
-        working = Data()
-    }
-
-    public init(_ field1: Text)
-    {
-        self.field1 = field1
-    }
-}
-
-extension Value
-{
-    public var data: Data
+    public func saveDaydream(_ connection: Transmission.Connection) throws
     {
         switch self
         {
-            case .BoolBuiltin(let subtype):
-                let typeData = TypeIdentifiers.BoolType.varint
-                let valueData = subtype.data
-                return typeData + valueData
+            case .toUTF8String:
+                try TypeIdentifiers.toUTF8StringType.saveDaydream(connection)
 
-            case .Boolean(let subtype):
-                let typeData = TypeIdentifiers.BooleanType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .toText:
+                try TypeIdentifiers.toTextType.saveDaydream(connection)
 
-            case .DataBuiltin(let subtype):
-                let typeData = TypeIdentifiers.DataType.varint
-                let valueData = subtype.data
-                return typeData + valueData
+            case .toUTF8Data:
+                try TypeIdentifiers.toUTF8DataType.saveDaydream(connection)
 
-            case .False:
-                let typeData = TypeIdentifiers.FalseType.varint
-                return typeData
-
-            case .IntBuiltin(let subtype):
-                let typeData = TypeIdentifiers.IntType.varint
-                let valueData = subtype.data
-                return typeData + valueData
-
-            case .ListVarint(let subtype):
-                let typeData = TypeIdentifiers.ListVarintType.varint
-                let valueData = subtype.data
-                return typeData + valueData
-
-            case .MutableText(let subtype):
-                let typeData = TypeIdentifiers.MutableTextType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .Nothing:
-                let typeData = TypeIdentifiers.NothingType.varint
-                return typeData
-
-            case .StringBuiltin(let subtype):
-                let typeData = TypeIdentifiers.StringType.varint
-                let valueData = subtype.data
-                return typeData + valueData
-
-            case .TextBuiltin(let subtype):
-                let typeData = TypeIdentifiers.TextType.varint
-                let valueData = subtype.data
-                return typeData + valueData
-
-            case .TextList(let subtype):
-                let typeData = TypeIdentifiers.TextListType.varint
-                let valueData = subtype.data
-                return typeData + valueData
-
-            case .True:
-                let typeData = TypeIdentifiers.TrueType.varint
-                return typeData
-
-            case .Varint(let bignum):
-                let typeData = TypeIdentifiers.VarintType.varint
-                let valueData = bignum.varint
-                return typeData + valueData
-
-            case .becomFirst:
-                let typeData = TypeIdentifiers.becomFirstType.varint
-                return typeData
-
-            case .become(let subtype):
-                let typeData = TypeIdentifiers.becomeType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .becomeDropFirst:
-                let typeData = TypeIdentifiers.becomeDropFirstType.varint
-                return typeData
-
-            case .becomeLast:
-                let typeData = TypeIdentifiers.becomeLastType.varint
-                return typeData
-
-            case .becomeReverse:
-                let typeData = TypeIdentifiers.becomeReverseType.varint
-                return typeData
-
-            case .becomeTrimmed:
-                let typeData = TypeIdentifiers.becomeTrimmedType.varint
-                return typeData
-
-            case .becomeUppercase:
-                let typeData = TypeIdentifiers.becomeUppercaseType.varint
-                return typeData
-
-            case .becomeUppercaseFirstLetter:
-                let typeData = TypeIdentifiers.becomeUppercaseFirstLetterType.varint
-                return typeData
-
-            case .convertFromBase64:
-                let typeData = TypeIdentifiers.convertFromBase64Type.varint
-                return typeData
+            case .toHex:
+                try TypeIdentifiers.toHexType.saveDaydream(connection)
 
             case .convertFromHex:
-                let typeData = TypeIdentifiers.convertFromHexType.varint
-                return typeData
-
-            case .convertToBase64:
-                let typeData = TypeIdentifiers.convertToBase64Type.varint
-                return typeData
+                try TypeIdentifiers.convertFromHexType.saveDaydream(connection)
 
             case .convertToHex:
-                let typeData = TypeIdentifiers.convertToHexType.varint
-                return typeData
+                try TypeIdentifiers.convertToHexType.saveDaydream(connection)
 
-            case .count(let subtype):
-                let typeData = TypeIdentifiers.countType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .toBase64:
+                try TypeIdentifiers.toBase64Type.saveDaydream(connection)
 
-            case .count_return(let subtype):
-                let typeData = TypeIdentifiers.count_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .convertFromBase64:
+                try TypeIdentifiers.convertFromBase64Type.saveDaydream(connection)
 
-            case .dropFirst(let subtype):
-                let typeData = TypeIdentifiers.dropFirstType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .convertToBase64:
+                try TypeIdentifiers.convertToBase64Type.saveDaydream(connection)
 
-            case .dropFirst_return(let subtype):
-                let typeData = TypeIdentifiers.dropFirst_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .trim:
+                try TypeIdentifiers.trimType.saveDaydream(connection)
 
-            case .fan(let subtype):
-                let typeData = TypeIdentifiers.fanType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .becomeTrimmed:
+                try TypeIdentifiers.becomeTrimmedType.saveDaydream(connection)
 
-            case .fan_return(let subtype):
-                let typeData = TypeIdentifiers.fan_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .count:
+                try TypeIdentifiers.countType.saveDaydream(connection)
 
-            case .first(let subtype):
-                let typeData = TypeIdentifiers.firstType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .isEmpty:
+                try TypeIdentifiers.isEmptyType.saveDaydream(connection)
 
-            case .first_return(let subtype):
-                let typeData = TypeIdentifiers.first_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .dropFirst:
+                try TypeIdentifiers.dropFirstType.saveDaydream(connection)
 
-            case .isEmpty(let subtype):
-                let typeData = TypeIdentifiers.isEmptyType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .becomeDropFirst:
+                try TypeIdentifiers.becomeDropFirstType.saveDaydream(connection)
 
-            case .isEmpty_return(let subtype):
-                let typeData = TypeIdentifiers.isEmpty_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .uppercase:
+                try TypeIdentifiers.uppercaseType.saveDaydream(connection)
 
-            case .last(let subtype):
-                let typeData = TypeIdentifiers.lastType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .becomeUppercase:
+                try TypeIdentifiers.becomeUppercaseType.saveDaydream(connection)
 
-            case .last_return(let subtype):
-                let typeData = TypeIdentifiers.last_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .uppercaseFirstLetter:
+                try TypeIdentifiers.uppercaseFirstLetterType.saveDaydream(connection)
 
-            case .reverse(let subtype):
-                let typeData = TypeIdentifiers.reverseType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .becomeUppercaseFirstLetter:
+                try TypeIdentifiers.becomeUppercaseFirstLetterType.saveDaydream(connection)
 
-            case .reverse_return(let subtype):
-                let typeData = TypeIdentifiers.reverse_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .first:
+                try TypeIdentifiers.firstType.saveDaydream(connection)
 
-            case .toBase64(let subtype):
-                let typeData = TypeIdentifiers.toBase64Type.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .becomeFirst:
+                try TypeIdentifiers.becomeFirstType.saveDaydream(connection)
 
-            case .toBase64_return(let subtype):
-                let typeData = TypeIdentifiers.toBase64_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .last:
+                try TypeIdentifiers.lastType.saveDaydream(connection)
 
-            case .toHex(let subtype):
-                let typeData = TypeIdentifiers.toHexType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .becomeLast:
+                try TypeIdentifiers.becomeLastType.saveDaydream(connection)
 
-            case .toHex_return(let subtype):
-                let typeData = TypeIdentifiers.toHex_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .fan:
+                try TypeIdentifiers.fanType.saveDaydream(connection)
 
-            case .toText(let subtype):
-                let typeData = TypeIdentifiers.toTextType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .reverse:
+                try TypeIdentifiers.reverseType.saveDaydream(connection)
 
-            case .toText_return(let subtype):
-                let typeData = TypeIdentifiers.toText_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .toUTF8Data(let subtype):
-                let typeData = TypeIdentifiers.toUTF8DataType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .toUTF8Data_return(let subtype):
-                let typeData = TypeIdentifiers.toUTF8Data_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .toUTF8String(let subtype):
-                let typeData = TypeIdentifiers.toUTF8StringType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .toUTF8String_return(let subtype):
-                let typeData = TypeIdentifiers.toUTF8String_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .trim(let subtype):
-                let typeData = TypeIdentifiers.trimType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .trim_return(let subtype):
-                let typeData = TypeIdentifiers.trim_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .uppercase(let subtype):
-                let typeData = TypeIdentifiers.uppercaseType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .uppercaseFirstLetter(let subtype):
-                let typeData = TypeIdentifiers.uppercaseFirstLetterType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .uppercaseFirstLetter_return(let subtype):
-                let typeData = TypeIdentifiers.uppercaseFirstLetter_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
-
-            case .uppercase_return(let subtype):
-                let typeData = TypeIdentifiers.uppercase_returnType.varint
-                let valueData = subtype.data
-                print("typeData: \(typeData.hex)")
-                print("valueData: \(valueData.hex)")
-                return typeData + valueData
+            case .becomeReverse:
+                try TypeIdentifiers.becomeReverseType.saveDaydream(connection)
         }
     }
 
-    public init?(data: Data)
+    public init(daydream connection: Transmission.Connection) throws
     {
-        guard let (bint, working) = data.popVarint() else
-        {
-            return nil
-        }
+        let bint = try BInt(daydream: connection)
 
         guard let int = bint.asInt() else
         {
-            return nil
+            throw DaydreamError.conversionFailed
         }
 
         guard let type = TypeIdentifiers(rawValue: int) else
         {
-            return nil
+            throw DaydreamError.conversionFailed
         }
 
         switch type
         {
+            case .toUTF8StringType:
+                self = .toUTF8String
+
+            case .toTextType:
+                self = .toText
+
+            case .toUTF8DataType:
+                self = .toUTF8Data
+
+            case .toHexType:
+                self = .toHex
+
+            case .convertFromHexType:
+                self = .convertFromHex
+
+            case .convertToHexType:
+                self = .convertToHex
+
+            case .toBase64Type:
+                self = .toBase64
+
+            case .convertFromBase64Type:
+                self = .convertFromBase64
+
+            case .convertToBase64Type:
+                self = .convertToBase64
+
+            case .trimType:
+                self = .trim
+
+            case .becomeTrimmedType:
+                self = .becomeTrimmed
+
+            case .countType:
+                self = .count
+
+            case .isEmptyType:
+                self = .isEmpty
+
+            case .dropFirstType:
+                self = .dropFirst
+
+            case .becomeDropFirstType:
+                self = .becomeDropFirst
+
+            case .uppercaseType:
+                self = .uppercase
+
+            case .becomeUppercaseType:
+                self = .becomeUppercase
+
+            case .uppercaseFirstLetterType:
+                self = .uppercaseFirstLetter
+
+            case .becomeUppercaseFirstLetterType:
+                self = .becomeUppercaseFirstLetter
+
+            case .firstType:
+                self = .first
+
+            case .becomeFirstType:
+                self = .becomeFirst
+
+            case .lastType:
+                self = .last
+
+            case .becomeLastType:
+                self = .becomeLast
+
+            case .fanType:
+                self = .fan
+
+            case .reverseType:
+                self = .reverse
+
+            case .becomeReverseType:
+                self = .becomeReverse
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case toUTF8String
+    case toText
+    case toUTF8Data
+    case toHex
+    case convertFromHex
+    case convertToHex
+    case toBase64
+    case convertFromBase64
+    case convertToBase64
+    case trim
+    case becomeTrimmed
+    case count
+    case isEmpty
+    case dropFirst
+    case becomeDropFirst
+    case uppercase
+    case becomeUppercase
+    case uppercaseFirstLetter
+    case becomeUppercaseFirstLetter
+    case first
+    case becomeFirst
+    case last
+    case becomeLast
+    case fan
+    case reverse
+    case becomeReverse
+}
+
+public enum MutableTextRequestValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .toUTF8String_request:
+                try TypeIdentifiers.toUTF8String_requestType.saveDaydream(connection)
+
+            case .toText_request:
+                try TypeIdentifiers.toText_requestType.saveDaydream(connection)
+
+            case .toUTF8Data_request:
+                try TypeIdentifiers.toUTF8Data_requestType.saveDaydream(connection)
+
+            case .toHex_request:
+                try TypeIdentifiers.toHex_requestType.saveDaydream(connection)
+
+            case .convertFromHex_request:
+                try TypeIdentifiers.convertFromHex_requestType.saveDaydream(connection)
+
+            case .convertToHex_request:
+                try TypeIdentifiers.convertToHex_requestType.saveDaydream(connection)
+
+            case .toBase64_request:
+                try TypeIdentifiers.toBase64_requestType.saveDaydream(connection)
+
+            case .convertFromBase64_request:
+                try TypeIdentifiers.convertFromBase64_requestType.saveDaydream(connection)
+
+            case .convertToBase64_request:
+                try TypeIdentifiers.convertToBase64_requestType.saveDaydream(connection)
+
+            case .trim_request:
+                try TypeIdentifiers.trim_requestType.saveDaydream(connection)
+
+            case .becomeTrimmed_request:
+                try TypeIdentifiers.becomeTrimmed_requestType.saveDaydream(connection)
+
+            case .count_request:
+                try TypeIdentifiers.count_requestType.saveDaydream(connection)
+
+            case .isEmpty_request:
+                try TypeIdentifiers.isEmpty_requestType.saveDaydream(connection)
+
+            case .dropFirst_request:
+                try TypeIdentifiers.dropFirst_requestType.saveDaydream(connection)
+
+            case .becomeDropFirst_request:
+                try TypeIdentifiers.becomeDropFirst_requestType.saveDaydream(connection)
+
+            case .uppercase_request:
+                try TypeIdentifiers.uppercase_requestType.saveDaydream(connection)
+
+            case .becomeUppercase_request:
+                try TypeIdentifiers.becomeUppercase_requestType.saveDaydream(connection)
+
+            case .uppercaseFirstLetter_request:
+                try TypeIdentifiers.uppercaseFirstLetter_requestType.saveDaydream(connection)
+
+            case .becomeUppercaseFirstLetter_request:
+                try TypeIdentifiers.becomeUppercaseFirstLetter_requestType.saveDaydream(connection)
+
+            case .first_request:
+                try TypeIdentifiers.first_requestType.saveDaydream(connection)
+
+            case .becomeFirst_request:
+                try TypeIdentifiers.becomeFirst_requestType.saveDaydream(connection)
+
+            case .last_request:
+                try TypeIdentifiers.last_requestType.saveDaydream(connection)
+
+            case .becomeLast_request:
+                try TypeIdentifiers.becomeLast_requestType.saveDaydream(connection)
+
+            case .fan_request:
+                try TypeIdentifiers.fan_requestType.saveDaydream(connection)
+
+            case .reverse_request:
+                try TypeIdentifiers.reverse_requestType.saveDaydream(connection)
+
+            case .becomeReverse_request:
+                try TypeIdentifiers.becomeReverse_requestType.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .toUTF8String_requestType:
+                self = .toUTF8String_request
+
+            case .toText_requestType:
+                self = .toText_request
+
+            case .toUTF8Data_requestType:
+                self = .toUTF8Data_request
+
+            case .toHex_requestType:
+                self = .toHex_request
+
+            case .convertFromHex_requestType:
+                self = .convertFromHex_request
+
+            case .convertToHex_requestType:
+                self = .convertToHex_request
+
+            case .toBase64_requestType:
+                self = .toBase64_request
+
+            case .convertFromBase64_requestType:
+                self = .convertFromBase64_request
+
+            case .convertToBase64_requestType:
+                self = .convertToBase64_request
+
+            case .trim_requestType:
+                self = .trim_request
+
+            case .becomeTrimmed_requestType:
+                self = .becomeTrimmed_request
+
+            case .count_requestType:
+                self = .count_request
+
+            case .isEmpty_requestType:
+                self = .isEmpty_request
+
+            case .dropFirst_requestType:
+                self = .dropFirst_request
+
+            case .becomeDropFirst_requestType:
+                self = .becomeDropFirst_request
+
+            case .uppercase_requestType:
+                self = .uppercase_request
+
+            case .becomeUppercase_requestType:
+                self = .becomeUppercase_request
+
+            case .uppercaseFirstLetter_requestType:
+                self = .uppercaseFirstLetter_request
+
+            case .becomeUppercaseFirstLetter_requestType:
+                self = .becomeUppercaseFirstLetter_request
+
+            case .first_requestType:
+                self = .first_request
+
+            case .becomeFirst_requestType:
+                self = .becomeFirst_request
+
+            case .last_requestType:
+                self = .last_request
+
+            case .becomeLast_requestType:
+                self = .becomeLast_request
+
+            case .fan_requestType:
+                self = .fan_request
+
+            case .reverse_requestType:
+                self = .reverse_request
+
+            case .becomeReverse_requestType:
+                self = .becomeReverse_request
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case toUTF8String_request
+    case toText_request
+    case toUTF8Data_request
+    case toHex_request
+    case convertFromHex_request
+    case convertToHex_request
+    case toBase64_request
+    case convertFromBase64_request
+    case convertToBase64_request
+    case trim_request
+    case becomeTrimmed_request
+    case count_request
+    case isEmpty_request
+    case dropFirst_request
+    case becomeDropFirst_request
+    case uppercase_request
+    case becomeUppercase_request
+    case uppercaseFirstLetter_request
+    case becomeUppercaseFirstLetter_request
+    case first_request
+    case becomeFirst_request
+    case last_request
+    case becomeLast_request
+    case fan_request
+    case reverse_request
+    case becomeReverse_request
+}
+
+public enum MutableTextResponseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        print("MutableTextResponseValue.saveDaydream() - \(self)")
+
+        switch self
+        {
+            case .toUTF8String_response(let subtype):
+                try TypeIdentifiers.toUTF8String_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .toText_response(let subtype):
+                try TypeIdentifiers.toText_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .toUTF8Data_response(let subtype):
+                try TypeIdentifiers.toUTF8Data_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .toHex_response(let subtype):
+                try TypeIdentifiers.toHex_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .convertFromHex_response(let subtype):
+                try TypeIdentifiers.convertFromHex_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .convertToHex_response:
+                try TypeIdentifiers.convertToHex_responseType.saveDaydream(connection)
+
+            case .toBase64_response(let subtype):
+                try TypeIdentifiers.toBase64_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .convertFromBase64_response(let subtype):
+                try TypeIdentifiers.convertFromBase64_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .convertToBase64_response:
+                try TypeIdentifiers.convertToBase64_responseType.saveDaydream(connection)
+
+            case .trim_response(let subtype):
+                try TypeIdentifiers.trim_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeTrimmed_response:
+                try TypeIdentifiers.becomeTrimmed_responseType.saveDaydream(connection)
+
+            case .count_response(let subtype):
+                try TypeIdentifiers.count_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .isEmpty_response(let subtype):
+                try TypeIdentifiers.isEmpty_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .dropFirst_response(let subtype):
+                try TypeIdentifiers.dropFirst_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeDropFirst_response(let subtype):
+                try TypeIdentifiers.becomeDropFirst_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .uppercase_response(let subtype):
+                try TypeIdentifiers.uppercase_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeUppercase_response:
+                try TypeIdentifiers.becomeUppercase_responseType.saveDaydream(connection)
+
+            case .uppercaseFirstLetter_response(let subtype):
+                try TypeIdentifiers.uppercaseFirstLetter_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeUppercaseFirstLetter_response(let subtype):
+                try TypeIdentifiers.becomeUppercaseFirstLetter_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .first_response(let subtype):
+                try TypeIdentifiers.first_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeFirst_response(let subtype):
+                try TypeIdentifiers.becomeFirst_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .last_response(let subtype):
+                try TypeIdentifiers.last_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeLast_response(let subtype):
+                try TypeIdentifiers.becomeLast_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .fan_response(let subtype):
+                try TypeIdentifiers.fan_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .reverse_response(let subtype):
+                try TypeIdentifiers.reverse_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeReverse_response:
+                try TypeIdentifiers.becomeReverse_responseType.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        print("MutableTextResponseValue.init(daydream:)")
+
+        let bint = try BInt(daydream: connection)
+
+        print("MutableTextResponseValue.init(daydream:) - bint: \(bint)")
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        print("MutableTextResponseValue.init(daydream:) - int: \(int)")
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .toUTF8String_responseType:
+                let value = try toUTF8String_responseValue(daydream: connection)
+
+                self = .toUTF8String_response(value)
+                return
+
+            case .toText_responseType:
+                let value = try toText_responseValue(daydream: connection)
+
+                self = .toText_response(value)
+                return
+
+            case .toUTF8Data_responseType:
+                let value = try toUTF8Data_responseValue(daydream: connection)
+
+                self = .toUTF8Data_response(value)
+                return
+
+            case .toHex_responseType:
+                let value = try toHex_responseValue(daydream: connection)
+
+                self = .toHex_response(value)
+                return
+
+            case .convertFromHex_responseType:
+                let value = try convertFromHex_responseValue(daydream: connection)
+
+                self = .convertFromHex_response(value)
+                return
+
+            case .convertToHex_responseType:
+                self = .convertToHex_response
+
+            case .toBase64_responseType:
+                let value = try toBase64_responseValue(daydream: connection)
+
+                self = .toBase64_response(value)
+                return
+
+            case .convertFromBase64_responseType:
+                let value = try convertFromBase64_responseValue(daydream: connection)
+
+                self = .convertFromBase64_response(value)
+                return
+
+            case .convertToBase64_responseType:
+                self = .convertToBase64_response
+
+            case .trim_responseType:
+                let value = try trim_responseValue(daydream: connection)
+
+                self = .trim_response(value)
+                return
+
+            case .becomeTrimmed_responseType:
+                self = .becomeTrimmed_response
+
+            case .count_responseType:
+                let value = try count_responseValue(daydream: connection)
+
+                self = .count_response(value)
+                return
+
+            case .isEmpty_responseType:
+                let value = try isEmpty_responseValue(daydream: connection)
+
+                self = .isEmpty_response(value)
+                return
+
+            case .dropFirst_responseType:
+                let value = try dropFirst_responseValue(daydream: connection)
+
+                self = .dropFirst_response(value)
+                return
+
+            case .becomeDropFirst_responseType:
+                let value = try becomeDropFirst_responseValue(daydream: connection)
+
+                self = .becomeDropFirst_response(value)
+                return
+
+            case .uppercase_responseType:
+                let value = try uppercase_responseValue(daydream: connection)
+
+                self = .uppercase_response(value)
+                return
+
+            case .becomeUppercase_responseType:
+                self = .becomeUppercase_response
+
+            case .uppercaseFirstLetter_responseType:
+                let value = try uppercaseFirstLetter_responseValue(daydream: connection)
+
+                self = .uppercaseFirstLetter_response(value)
+                return
+
+            case .becomeUppercaseFirstLetter_responseType:
+                let value = try becomeUppercaseFirstLetter_responseValue(daydream: connection)
+
+                self = .becomeUppercaseFirstLetter_response(value)
+                return
+
+            case .first_responseType:
+                let value = try first_responseValue(daydream: connection)
+
+                self = .first_response(value)
+                return
+
+            case .becomeFirst_responseType:
+                let value = try becomeFirst_responseValue(daydream: connection)
+
+                self = .becomeFirst_response(value)
+                return
+
+            case .last_responseType:
+                let value = try last_responseValue(daydream: connection)
+
+                self = .last_response(value)
+                return
+
+            case .becomeLast_responseType:
+                let value = try becomeLast_responseValue(daydream: connection)
+
+                self = .becomeLast_response(value)
+                return
+
+            case .fan_responseType:
+                let value = try fan_responseValue(daydream: connection)
+
+                self = .fan_response(value)
+                return
+
+            case .reverse_responseType:
+                let value = try reverse_responseValue(daydream: connection)
+
+                self = .reverse_response(value)
+                return
+
+            case .becomeReverse_responseType:
+                self = .becomeReverse_response
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case toUTF8String_response(toUTF8String_responseValue)
+    case toText_response(toText_responseValue)
+    case toUTF8Data_response(toUTF8Data_responseValue)
+    case toHex_response(toHex_responseValue)
+    case convertFromHex_response(convertFromHex_responseValue)
+    case convertToHex_response
+    case toBase64_response(toBase64_responseValue)
+    case convertFromBase64_response(convertFromBase64_responseValue)
+    case convertToBase64_response
+    case trim_response(trim_responseValue)
+    case becomeTrimmed_response
+    case count_response(count_responseValue)
+    case isEmpty_response(isEmpty_responseValue)
+    case dropFirst_response(dropFirst_responseValue)
+    case becomeDropFirst_response(becomeDropFirst_responseValue)
+    case uppercase_response(uppercase_responseValue)
+    case becomeUppercase_response
+    case uppercaseFirstLetter_response(uppercaseFirstLetter_responseValue)
+    case becomeUppercaseFirstLetter_response(becomeUppercaseFirstLetter_responseValue)
+    case first_response(first_responseValue)
+    case becomeFirst_response(becomeFirst_responseValue)
+    case last_response(last_responseValue)
+    case becomeLast_response(becomeLast_responseValue)
+    case fan_response(fan_responseValue)
+    case reverse_response(reverse_responseValue)
+    case becomeReverse_response
+}
+
+
+
+public enum becomeDropFirst_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .Nothing:
+                try TypeIdentifiers.NothingType.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .NothingType:
+                self = .Nothing
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case Nothing
+    case Error(ErrorValue)
+}
+
+public enum becomeFirst_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .Nothing:
+                try TypeIdentifiers.NothingType.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .NothingType:
+                self = .Nothing
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case Nothing
+    case Error(ErrorValue)
+}
+
+public enum becomeLast_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .Nothing:
+                try TypeIdentifiers.NothingType.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .NothingType:
+                self = .Nothing
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case Nothing
+    case Error(ErrorValue)
+}
+
+public enum becomeUppercaseFirstLetter_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .Nothing:
+                try TypeIdentifiers.NothingType.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .NothingType:
+                self = .Nothing
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case Nothing
+    case Error(ErrorValue)
+}
+
+public enum convertFromBase64_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .Nothing:
+                try TypeIdentifiers.NothingType.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .NothingType:
+                self = .Nothing
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case Nothing
+    case Error(ErrorValue)
+}
+
+public enum convertFromHex_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .Nothing:
+                try TypeIdentifiers.NothingType.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .NothingType:
+                self = .Nothing
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case Nothing
+    case Error(ErrorValue)
+}
+
+public struct count_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Int
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Int(daydream: connection)
+    }
+
+    public init(_ field1: Int)
+    {
+        self.field1 = field1
+    }
+}
+
+public enum dropFirst_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .dropFirst_response_value(let subtype):
+                try TypeIdentifiers.dropFirst_response_valueType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .dropFirst_response_valueType:
+                let value = try dropFirst_response_valueValue(daydream: connection)
+
+                self = .dropFirst_response_value(value)
+                return
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case dropFirst_response_value(dropFirst_response_valueValue)
+    case Error(ErrorValue)
+}
+
+public struct dropFirst_response_valueValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct fan_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: [Text]
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try [Text](daydream: connection)
+    }
+
+    public init(_ field1: [Text])
+    {
+        self.field1 = field1
+    }
+}
+
+public enum first_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .first_response_value(let subtype):
+                try TypeIdentifiers.first_response_valueType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .first_response_valueType:
+                let value = try first_response_valueValue(daydream: connection)
+
+                self = .first_response_value(value)
+                return
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case first_response_value(first_response_valueValue)
+    case Error(ErrorValue)
+}
+
+public struct first_response_valueValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct isEmpty_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Bool
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Bool(daydream: connection)
+    }
+
+    public init(_ field1: Bool)
+    {
+        self.field1 = field1
+    }
+}
+
+public enum last_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .last_response_value(let subtype):
+                try TypeIdentifiers.last_response_valueType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .last_response_valueType:
+                let value = try last_response_valueValue(daydream: connection)
+
+                self = .last_response_value(value)
+                return
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case last_response_value(last_response_valueValue)
+    case Error(ErrorValue)
+}
+
+public struct last_response_valueValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct reverse_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct toBase64_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct toHex_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct toText_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct toUTF8Data_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Data
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Data(daydream: connection)
+    }
+
+    public init(_ field1: Data)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct toUTF8String_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: String
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try String(daydream: connection)
+    }
+
+    public init(_ field1: String)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct trim_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public enum uppercaseFirstLetter_responseValue: Equatable, Codable, Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .uppercaseFirstLetter_response_value(let subtype):
+                try TypeIdentifiers.uppercaseFirstLetter_response_valueType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let bint = try BInt(daydream: connection)
+
+        guard let int = bint.asInt() else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        guard let type = TypeIdentifiers(rawValue: int) else
+        {
+            throw DaydreamError.conversionFailed
+        }
+
+        switch type
+        {
+            case .uppercaseFirstLetter_response_valueType:
+                let value = try uppercaseFirstLetter_response_valueValue(daydream: connection)
+
+                self = .uppercaseFirstLetter_response_value(value)
+                return
+
+            case .ErrorType:
+                let value = try ErrorValue(daydream: connection)
+
+                self = .Error(value)
+                return
+
+            default:
+                throw DaydreamError.conversionFailed
+        }
+    }
+
+    case uppercaseFirstLetter_response_value(uppercaseFirstLetter_response_valueValue)
+    case Error(ErrorValue)
+}
+
+public struct uppercaseFirstLetter_response_valueValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+public struct uppercase_responseValue: Equatable, Codable, Daydreamable
+{
+    // Public computed properties
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        try self.field1.saveDaydream(connection)
+    }
+
+    // Public Fields
+    public let field1: Text
+
+    // Public Inits
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        self.field1 = try Text(daydream: connection)
+    }
+
+    public init(_ field1: Text)
+    {
+        self.field1 = field1
+    }
+}
+
+extension Value: Daydreamable
+{
+    public func saveDaydream(_ connection: Transmission.Connection) throws
+    {
+        switch self
+        {
+            case .BoolBuiltin(let subtype):
+                try TypeIdentifiers.BoolType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .Boolean(let subtype):
+                try TypeIdentifiers.BooleanType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .DataBuiltin(let subtype):
+                try TypeIdentifiers.DataType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .Error(let subtype):
+                try TypeIdentifiers.ErrorType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .False:
+                try TypeIdentifiers.FalseType.saveDaydream(connection)
+
+            case .IntBuiltin(let subtype):
+                try TypeIdentifiers.IntType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .ListVarint(let subtype):
+                try TypeIdentifiers.ListVarintType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .MutableText(let subtype):
+                try TypeIdentifiers.MutableTextType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .MutableTextRequest(let subtype):
+                try TypeIdentifiers.MutableTextRequestType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .MutableTextResponse(let subtype):
+                try TypeIdentifiers.MutableTextResponseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .Nothing:
+                try TypeIdentifiers.NothingType.saveDaydream(connection)
+
+            case .StringBuiltin(let subtype):
+                try TypeIdentifiers.StringType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .TextBuiltin(let subtype):
+                try TypeIdentifiers.TextType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .TextList(let subtype):
+                try TypeIdentifiers.TextListType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .True:
+                try TypeIdentifiers.TrueType.saveDaydream(connection)
+
+            case .Varint(let bignum):
+                try TypeIdentifiers.VarintType.saveDaydream(connection)
+                try bignum.saveDaydream(connection)
+
+            case .becomeDropFirst:
+                try TypeIdentifiers.becomeDropFirstType.saveDaydream(connection)
+
+            case .becomeDropFirst_request:
+                try TypeIdentifiers.becomeDropFirst_requestType.saveDaydream(connection)
+
+            case .becomeDropFirst_response(let subtype):
+                try TypeIdentifiers.becomeDropFirst_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeFirst:
+                try TypeIdentifiers.becomeFirstType.saveDaydream(connection)
+
+            case .becomeFirst_request:
+                try TypeIdentifiers.becomeFirst_requestType.saveDaydream(connection)
+
+            case .becomeFirst_response(let subtype):
+                try TypeIdentifiers.becomeFirst_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeLast:
+                try TypeIdentifiers.becomeLastType.saveDaydream(connection)
+
+            case .becomeLast_request:
+                try TypeIdentifiers.becomeLast_requestType.saveDaydream(connection)
+
+            case .becomeLast_response(let subtype):
+                try TypeIdentifiers.becomeLast_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeReverse:
+                try TypeIdentifiers.becomeReverseType.saveDaydream(connection)
+
+            case .becomeReverse_request:
+                try TypeIdentifiers.becomeReverse_requestType.saveDaydream(connection)
+
+            case .becomeReverse_response:
+                try TypeIdentifiers.becomeReverse_responseType.saveDaydream(connection)
+
+            case .becomeTrimmed:
+                try TypeIdentifiers.becomeTrimmedType.saveDaydream(connection)
+
+            case .becomeTrimmed_request:
+                try TypeIdentifiers.becomeTrimmed_requestType.saveDaydream(connection)
+
+            case .becomeTrimmed_response:
+                try TypeIdentifiers.becomeTrimmed_responseType.saveDaydream(connection)
+
+            case .becomeUppercase:
+                try TypeIdentifiers.becomeUppercaseType.saveDaydream(connection)
+
+            case .becomeUppercaseFirstLetter:
+                try TypeIdentifiers.becomeUppercaseFirstLetterType.saveDaydream(connection)
+
+            case .becomeUppercaseFirstLetter_request:
+                try TypeIdentifiers.becomeUppercaseFirstLetter_requestType.saveDaydream(connection)
+
+            case .becomeUppercaseFirstLetter_response(let subtype):
+                try TypeIdentifiers.becomeUppercaseFirstLetter_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .becomeUppercase_request:
+                try TypeIdentifiers.becomeUppercase_requestType.saveDaydream(connection)
+
+            case .becomeUppercase_response:
+                try TypeIdentifiers.becomeUppercase_responseType.saveDaydream(connection)
+
+            case .convertFromBase64:
+                try TypeIdentifiers.convertFromBase64Type.saveDaydream(connection)
+
+            case .convertFromBase64_request:
+                try TypeIdentifiers.convertFromBase64_requestType.saveDaydream(connection)
+
+            case .convertFromBase64_response(let subtype):
+                try TypeIdentifiers.convertFromBase64_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .convertFromHex:
+                try TypeIdentifiers.convertFromHexType.saveDaydream(connection)
+
+            case .convertFromHex_request:
+                try TypeIdentifiers.convertFromHex_requestType.saveDaydream(connection)
+
+            case .convertFromHex_response(let subtype):
+                try TypeIdentifiers.convertFromHex_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .convertToBase64:
+                try TypeIdentifiers.convertToBase64Type.saveDaydream(connection)
+
+            case .convertToBase64_request:
+                try TypeIdentifiers.convertToBase64_requestType.saveDaydream(connection)
+
+            case .convertToBase64_response:
+                try TypeIdentifiers.convertToBase64_responseType.saveDaydream(connection)
+
+            case .convertToHex:
+                try TypeIdentifiers.convertToHexType.saveDaydream(connection)
+
+            case .convertToHex_request:
+                try TypeIdentifiers.convertToHex_requestType.saveDaydream(connection)
+
+            case .convertToHex_response:
+                try TypeIdentifiers.convertToHex_responseType.saveDaydream(connection)
+
+            case .count:
+                try TypeIdentifiers.countType.saveDaydream(connection)
+
+            case .count_request:
+                try TypeIdentifiers.count_requestType.saveDaydream(connection)
+
+            case .count_response(let subtype):
+                try TypeIdentifiers.count_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .dropFirst:
+                try TypeIdentifiers.dropFirstType.saveDaydream(connection)
+
+            case .dropFirst_request:
+                try TypeIdentifiers.dropFirst_requestType.saveDaydream(connection)
+
+            case .dropFirst_response(let subtype):
+                try TypeIdentifiers.dropFirst_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .dropFirst_response_value(let subtype):
+                try TypeIdentifiers.dropFirst_response_valueType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .fan:
+                try TypeIdentifiers.fanType.saveDaydream(connection)
+
+            case .fan_request:
+                try TypeIdentifiers.fan_requestType.saveDaydream(connection)
+
+            case .fan_response(let subtype):
+                try TypeIdentifiers.fan_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .first:
+                try TypeIdentifiers.firstType.saveDaydream(connection)
+
+            case .first_request:
+                try TypeIdentifiers.first_requestType.saveDaydream(connection)
+
+            case .first_response(let subtype):
+                try TypeIdentifiers.first_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .first_response_value(let subtype):
+                try TypeIdentifiers.first_response_valueType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .isEmpty:
+                try TypeIdentifiers.isEmptyType.saveDaydream(connection)
+
+            case .isEmpty_request:
+                try TypeIdentifiers.isEmpty_requestType.saveDaydream(connection)
+
+            case .isEmpty_response(let subtype):
+                try TypeIdentifiers.isEmpty_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .last:
+                try TypeIdentifiers.lastType.saveDaydream(connection)
+
+            case .last_request:
+                try TypeIdentifiers.last_requestType.saveDaydream(connection)
+
+            case .last_response(let subtype):
+                try TypeIdentifiers.last_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .last_response_value(let subtype):
+                try TypeIdentifiers.last_response_valueType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .reverse:
+                try TypeIdentifiers.reverseType.saveDaydream(connection)
+
+            case .reverse_request:
+                try TypeIdentifiers.reverse_requestType.saveDaydream(connection)
+
+            case .reverse_response(let subtype):
+                try TypeIdentifiers.reverse_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .toBase64:
+                try TypeIdentifiers.toBase64Type.saveDaydream(connection)
+
+            case .toBase64_request:
+                try TypeIdentifiers.toBase64_requestType.saveDaydream(connection)
+
+            case .toBase64_response(let subtype):
+                try TypeIdentifiers.toBase64_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .toHex:
+                try TypeIdentifiers.toHexType.saveDaydream(connection)
+
+            case .toHex_request:
+                try TypeIdentifiers.toHex_requestType.saveDaydream(connection)
+
+            case .toHex_response(let subtype):
+                try TypeIdentifiers.toHex_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .toText:
+                try TypeIdentifiers.toTextType.saveDaydream(connection)
+
+            case .toText_request:
+                try TypeIdentifiers.toText_requestType.saveDaydream(connection)
+
+            case .toText_response(let subtype):
+                try TypeIdentifiers.toText_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .toUTF8Data:
+                try TypeIdentifiers.toUTF8DataType.saveDaydream(connection)
+
+            case .toUTF8Data_request:
+                try TypeIdentifiers.toUTF8Data_requestType.saveDaydream(connection)
+
+            case .toUTF8Data_response(let subtype):
+                try TypeIdentifiers.toUTF8Data_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .toUTF8String:
+                try TypeIdentifiers.toUTF8StringType.saveDaydream(connection)
+
+            case .toUTF8String_request:
+                try TypeIdentifiers.toUTF8String_requestType.saveDaydream(connection)
+
+            case .toUTF8String_response(let subtype):
+                try TypeIdentifiers.toUTF8String_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .trim:
+                try TypeIdentifiers.trimType.saveDaydream(connection)
+
+            case .trim_request:
+                try TypeIdentifiers.trim_requestType.saveDaydream(connection)
+
+            case .trim_response(let subtype):
+                try TypeIdentifiers.trim_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .uppercase:
+                try TypeIdentifiers.uppercaseType.saveDaydream(connection)
+
+            case .uppercaseFirstLetter:
+                try TypeIdentifiers.uppercaseFirstLetterType.saveDaydream(connection)
+
+            case .uppercaseFirstLetter_request:
+                try TypeIdentifiers.uppercaseFirstLetter_requestType.saveDaydream(connection)
+
+            case .uppercaseFirstLetter_response(let subtype):
+                try TypeIdentifiers.uppercaseFirstLetter_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .uppercaseFirstLetter_response_value(let subtype):
+                try TypeIdentifiers.uppercaseFirstLetter_response_valueType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+
+            case .uppercase_request:
+                try TypeIdentifiers.uppercase_requestType.saveDaydream(connection)
+
+            case .uppercase_response(let subtype):
+                try TypeIdentifiers.uppercase_responseType.saveDaydream(connection)
+                try subtype.saveDaydream(connection)
+        }
+    }
+
+    public init(daydream connection: Transmission.Connection) throws
+    {
+        let type = try TypeIdentifiers(daydream: connection)
+
+        switch type
+        {
             case .BoolType:
-                guard let subtype = Bool(data: working) else
-                {
-                    return nil
-                }
+                let subtype = try Bool(daydream: connection)
                 self = .BoolBuiltin(subtype)
 
             case .BooleanType:
-                guard let subtype = BooleanValue(data: working) else
-                {
-                    return nil
-                }
+                let subtype = try BooleanValue(daydream: connection)
                 self = .Boolean(subtype)
 
             case .DataType:
-                self = .DataBuiltin(working)
+                let subtype = try Data(daydream: connection)
+                self = .DataBuiltin(subtype)
+
+            case .ErrorType:
+                let subtype = try ErrorValue(daydream: connection)
+                self = .Error(subtype)
 
             case .FalseType:
                 self = .False
 
             case .IntType:
-                guard let subtype = Int(data: working) else
-                {
-                    return nil
-                }
+                let subtype = try Int(daydream: connection)
                 self = .IntBuiltin(subtype)
 
             case .ListVarintType:
-                guard let subtype = [BInt](data: working) else
-                {
-                    return nil
-                }
+                let subtype = try [BInt](daydream: connection)
                 self = .ListVarint(subtype)
 
             case .MutableTextType:
-                guard let subtype = MutableTextValue(data: working) else
-                {
-                    return nil
-                }
+                let subtype = try MutableTextValue(daydream: connection)
                 self = .MutableText(subtype)
+
+            case .MutableTextRequestType:
+                let subtype = try MutableTextRequestValue(daydream: connection)
+                self = .MutableTextRequest(subtype)
+
+            case .MutableTextResponseType:
+                let subtype = try MutableTextResponseValue(daydream: connection)
+                self = .MutableTextResponse(subtype)
 
             case .NothingType:
                 self = .Nothing
 
             case .StringType:
-                self = .StringBuiltin(String(data: working))
+                self = .StringBuiltin(try String(daydream: connection))
 
             case .TextType:
-                guard let subtype = Text(data: working) else
-                {
-                    return nil
-                }
+                let subtype = try Text(daydream: connection)
                 self = .TextBuiltin(subtype)
 
             case .TextListType:
-                guard let subtype = [Text](data: working) else
-                {
-                    return nil
-                }
+                let subtype = try [Text](daydream: connection)
                 self = .TextList(subtype)
 
             case .TrueType:
                 self = .True
 
             case .VarintType:
-                guard let bignum = BInt(varint: working) else
-                {
-                    return nil
-                }
-
+                let bignum = try BInt(daydream: connection)
                 self = .Varint(bignum)
-
-            case .becomFirstType:
-                self = .becomFirst
-
-            case .becomeType:
-                guard let subtype = becomeValue(data: working) else
-                {
-                    return nil
-                }
-                self = .become(subtype)
 
             case .becomeDropFirstType:
                 self = .becomeDropFirst
 
+            case .becomeDropFirst_requestType:
+                self = .becomeDropFirst_request
+
+            case .becomeDropFirst_responseType:
+                let subtype = try becomeDropFirst_responseValue(daydream: connection)
+                self = .becomeDropFirst_response(subtype)
+
+            case .becomeFirstType:
+                self = .becomeFirst
+
+            case .becomeFirst_requestType:
+                self = .becomeFirst_request
+
+            case .becomeFirst_responseType:
+                let subtype = try becomeFirst_responseValue(daydream: connection)
+                self = .becomeFirst_response(subtype)
+
             case .becomeLastType:
                 self = .becomeLast
+
+            case .becomeLast_requestType:
+                self = .becomeLast_request
+
+            case .becomeLast_responseType:
+                let subtype = try becomeLast_responseValue(daydream: connection)
+                self = .becomeLast_response(subtype)
 
             case .becomeReverseType:
                 self = .becomeReverse
 
+            case .becomeReverse_requestType:
+                self = .becomeReverse_request
+
+            case .becomeReverse_responseType:
+                self = .becomeReverse_response
+
             case .becomeTrimmedType:
                 self = .becomeTrimmed
+
+            case .becomeTrimmed_requestType:
+                self = .becomeTrimmed_request
+
+            case .becomeTrimmed_responseType:
+                self = .becomeTrimmed_response
 
             case .becomeUppercaseType:
                 self = .becomeUppercase
@@ -2236,230 +2368,232 @@ extension Value
             case .becomeUppercaseFirstLetterType:
                 self = .becomeUppercaseFirstLetter
 
+            case .becomeUppercaseFirstLetter_requestType:
+                self = .becomeUppercaseFirstLetter_request
+
+            case .becomeUppercaseFirstLetter_responseType:
+                let subtype = try becomeUppercaseFirstLetter_responseValue(daydream: connection)
+                self = .becomeUppercaseFirstLetter_response(subtype)
+
+            case .becomeUppercase_requestType:
+                self = .becomeUppercase_request
+
+            case .becomeUppercase_responseType:
+                self = .becomeUppercase_response
+
             case .convertFromBase64Type:
                 self = .convertFromBase64
+
+            case .convertFromBase64_requestType:
+                self = .convertFromBase64_request
+
+            case .convertFromBase64_responseType:
+                let subtype = try convertFromBase64_responseValue(daydream: connection)
+                self = .convertFromBase64_response(subtype)
 
             case .convertFromHexType:
                 self = .convertFromHex
 
+            case .convertFromHex_requestType:
+                self = .convertFromHex_request
+
+            case .convertFromHex_responseType:
+                let subtype = try convertFromHex_responseValue(daydream: connection)
+                self = .convertFromHex_response(subtype)
+
             case .convertToBase64Type:
                 self = .convertToBase64
+
+            case .convertToBase64_requestType:
+                self = .convertToBase64_request
+
+            case .convertToBase64_responseType:
+                self = .convertToBase64_response
 
             case .convertToHexType:
                 self = .convertToHex
 
-            case .countType:
-                guard let subtype = countValue(data: working) else
-                {
-                    return nil
-                }
-                self = .count(subtype)
+            case .convertToHex_requestType:
+                self = .convertToHex_request
 
-            case .count_returnType:
-                guard let subtype = count_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .count_return(subtype)
+            case .convertToHex_responseType:
+                self = .convertToHex_response
+
+            case .countType:
+                self = .count
+
+            case .count_requestType:
+                self = .count_request
+
+            case .count_responseType:
+                let subtype = try count_responseValue(daydream: connection)
+                self = .count_response(subtype)
 
             case .dropFirstType:
-                guard let subtype = dropFirstValue(data: working) else
-                {
-                    return nil
-                }
-                self = .dropFirst(subtype)
+                self = .dropFirst
 
-            case .dropFirst_returnType:
-                guard let subtype = dropFirst_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .dropFirst_return(subtype)
+            case .dropFirst_requestType:
+                self = .dropFirst_request
+
+            case .dropFirst_responseType:
+                let subtype = try dropFirst_responseValue(daydream: connection)
+                self = .dropFirst_response(subtype)
+
+            case .dropFirst_response_valueType:
+                let subtype = try dropFirst_response_valueValue(daydream: connection)
+                self = .dropFirst_response_value(subtype)
 
             case .fanType:
-                guard let subtype = fanValue(data: working) else
-                {
-                    return nil
-                }
-                self = .fan(subtype)
+                self = .fan
 
-            case .fan_returnType:
-                guard let subtype = fan_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .fan_return(subtype)
+            case .fan_requestType:
+                self = .fan_request
+
+            case .fan_responseType:
+                let subtype = try fan_responseValue(daydream: connection)
+                self = .fan_response(subtype)
 
             case .firstType:
-                guard let subtype = firstValue(data: working) else
-                {
-                    return nil
-                }
-                self = .first(subtype)
+                self = .first
 
-            case .first_returnType:
-                guard let subtype = first_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .first_return(subtype)
+            case .first_requestType:
+                self = .first_request
+
+            case .first_responseType:
+                let subtype = try first_responseValue(daydream: connection)
+                self = .first_response(subtype)
+
+            case .first_response_valueType:
+                let subtype = try first_response_valueValue(daydream: connection)
+                self = .first_response_value(subtype)
 
             case .isEmptyType:
-                guard let subtype = isEmptyValue(data: working) else
-                {
-                    return nil
-                }
-                self = .isEmpty(subtype)
+                self = .isEmpty
 
-            case .isEmpty_returnType:
-                guard let subtype = isEmpty_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .isEmpty_return(subtype)
+            case .isEmpty_requestType:
+                self = .isEmpty_request
+
+            case .isEmpty_responseType:
+                let subtype = try isEmpty_responseValue(daydream: connection)
+                self = .isEmpty_response(subtype)
 
             case .lastType:
-                guard let subtype = lastValue(data: working) else
-                {
-                    return nil
-                }
-                self = .last(subtype)
+                self = .last
 
-            case .last_returnType:
-                guard let subtype = last_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .last_return(subtype)
+            case .last_requestType:
+                self = .last_request
+
+            case .last_responseType:
+                let subtype = try last_responseValue(daydream: connection)
+                self = .last_response(subtype)
+
+            case .last_response_valueType:
+                let subtype = try last_response_valueValue(daydream: connection)
+                self = .last_response_value(subtype)
 
             case .reverseType:
-                guard let subtype = reverseValue(data: working) else
-                {
-                    return nil
-                }
-                self = .reverse(subtype)
+                self = .reverse
 
-            case .reverse_returnType:
-                guard let subtype = reverse_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .reverse_return(subtype)
+            case .reverse_requestType:
+                self = .reverse_request
+
+            case .reverse_responseType:
+                let subtype = try reverse_responseValue(daydream: connection)
+                self = .reverse_response(subtype)
 
             case .toBase64Type:
-                guard let subtype = toBase64Value(data: working) else
-                {
-                    return nil
-                }
-                self = .toBase64(subtype)
+                self = .toBase64
 
-            case .toBase64_returnType:
-                guard let subtype = toBase64_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toBase64_return(subtype)
+            case .toBase64_requestType:
+                self = .toBase64_request
+
+            case .toBase64_responseType:
+                let subtype = try toBase64_responseValue(daydream: connection)
+                self = .toBase64_response(subtype)
 
             case .toHexType:
-                guard let subtype = toHexValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toHex(subtype)
+                self = .toHex
 
-            case .toHex_returnType:
-                guard let subtype = toHex_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toHex_return(subtype)
+            case .toHex_requestType:
+                self = .toHex_request
+
+            case .toHex_responseType:
+                let subtype = try toHex_responseValue(daydream: connection)
+                self = .toHex_response(subtype)
 
             case .toTextType:
-                guard let subtype = toTextValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toText(subtype)
+                self = .toText
 
-            case .toText_returnType:
-                guard let subtype = toText_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toText_return(subtype)
+            case .toText_requestType:
+                self = .toText_request
+
+            case .toText_responseType:
+                let subtype = try toText_responseValue(daydream: connection)
+                self = .toText_response(subtype)
 
             case .toUTF8DataType:
-                guard let subtype = toUTF8DataValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toUTF8Data(subtype)
+                self = .toUTF8Data
 
-            case .toUTF8Data_returnType:
-                guard let subtype = toUTF8Data_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toUTF8Data_return(subtype)
+            case .toUTF8Data_requestType:
+                self = .toUTF8Data_request
+
+            case .toUTF8Data_responseType:
+                let subtype = try toUTF8Data_responseValue(daydream: connection)
+                self = .toUTF8Data_response(subtype)
 
             case .toUTF8StringType:
-                guard let subtype = toUTF8StringValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toUTF8String(subtype)
+                self = .toUTF8String
 
-            case .toUTF8String_returnType:
-                guard let subtype = toUTF8String_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .toUTF8String_return(subtype)
+            case .toUTF8String_requestType:
+                self = .toUTF8String_request
+
+            case .toUTF8String_responseType:
+                let subtype = try toUTF8String_responseValue(daydream: connection)
+                self = .toUTF8String_response(subtype)
 
             case .trimType:
-                guard let subtype = trimValue(data: working) else
-                {
-                    return nil
-                }
-                self = .trim(subtype)
+                self = .trim
 
-            case .trim_returnType:
-                guard let subtype = trim_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .trim_return(subtype)
+            case .trim_requestType:
+                self = .trim_request
+
+            case .trim_responseType:
+                let subtype = try trim_responseValue(daydream: connection)
+                self = .trim_response(subtype)
 
             case .uppercaseType:
-                guard let subtype = uppercaseValue(data: working) else
-                {
-                    return nil
-                }
-                self = .uppercase(subtype)
+                self = .uppercase
 
             case .uppercaseFirstLetterType:
-                guard let subtype = uppercaseFirstLetterValue(data: working) else
-                {
-                    return nil
-                }
-                self = .uppercaseFirstLetter(subtype)
+                self = .uppercaseFirstLetter
 
-            case .uppercaseFirstLetter_returnType:
-                guard let subtype = uppercaseFirstLetter_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .uppercaseFirstLetter_return(subtype)
+            case .uppercaseFirstLetter_requestType:
+                self = .uppercaseFirstLetter_request
 
-            case .uppercase_returnType:
-                guard let subtype = uppercase_returnValue(data: working) else
-                {
-                    return nil
-                }
-                self = .uppercase_return(subtype)
+            case .uppercaseFirstLetter_responseType:
+                let subtype = try uppercaseFirstLetter_responseValue(daydream: connection)
+                self = .uppercaseFirstLetter_response(subtype)
+
+            case .uppercaseFirstLetter_response_valueType:
+                let subtype = try uppercaseFirstLetter_response_valueValue(daydream: connection)
+                self = .uppercaseFirstLetter_response_value(subtype)
+
+            case .uppercase_requestType:
+                self = .uppercase_request
+
+            case .uppercase_responseType:
+                let subtype = try uppercase_responseValue(daydream: connection)
+                self = .uppercase_response(subtype)
 
             default:
-                return nil
+                throw DaydreamError.conversionFailed
         }
     }
+}
+
+public enum DaydreamError: Error
+{
+    case conversionFailed
+    case readFailed
+    case writeFailed
 }
