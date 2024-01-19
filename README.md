@@ -12,7 +12,7 @@ Being experimental, the project tries out a lot of weird, new ideas. Because of 
 
 The primary implementation so far is UltravioletText, which provides a Text register. Much like an integer register or
 a floating point register in traditional CPU and VM design, a Text register holds and allows for the manipulation of
-text. The implementation of the Text register is provided by the [Text library for Swift](https://github.com/OperatorFoundation/Text).
+Unicode text. The implementation of the Text register is provided by the [Text library for Swift](https://github.com/OperatorFoundation/Text).
 
 The current implementation is unfortunately somewhat cumbersome to run, although no more difficult than setting up a
 Kubernetes cluster. It relies on several home-grown server tools in order to operate. Here is an overview of the
