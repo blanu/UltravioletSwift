@@ -2,7 +2,7 @@
 //  MutableTextShell.swift
 //
 //
-//  Created by the Daydream Compiler on 2024-01-16 23:32:18 +0000.
+//  Created by the Daydream Compiler on 2024-01-19 22:58:08 +0000.
 //
 
 import Foundation
@@ -29,7 +29,7 @@ public struct MutableTextShell
 
     func run()
     {
-        print("MutableText shell - 2024-01-16 23:32:18 +0000")
+        print("MutableText shell - 2024-01-19 22:58:08 +0000")
 
         while true
         {
@@ -58,24 +58,48 @@ public struct MutableTextShell
             }
             else if command == "help"
             {
+                    print("append -> append_response_value")
+                    print("becomeAppended")
                     print("becomeDropFirst throws")
+                    print("becomeDropPrefix throws")
                     print("becomeFirst throws")
+                    print("becomeJoined")
                     print("becomeLast throws")
+                    print("becomePrepended")
                     print("becomeReverse")
+                    print("becomeSplitAtHead throws")
+                    print("becomeSplitAtTail throws")
+                    print("becomeSplitOnHead throws")
+                    print("becomeSplitOnLastHead throws")
+                    print("becomeSplitOnLastTail throws")
+                    print("becomeSplitOnTail throws")
+                    print("becomeSplit throws")
+                    print("becomeSubstring throws")
                     print("becomeTrimmed")
                     print("becomeUppercaseFirstLetter throws")
                     print("becomeUppercase")
+                    print("become")
+                    print("containsSubstring -> containsSubstring_response_value")
                     print("convertFromBase64 throws")
                     print("convertFromHex throws")
                     print("convertToBase64")
                     print("convertToHex")
                     print("count -> Int")
                     print("dropFirst throws -> Text")
+                    print("dropPrefix throws -> Text")
                     print("fan -> Text")
                     print("first throws -> Text")
+                    print("indexOf throws -> Int")
                     print("isEmpty -> Bool")
+                    print("join -> join_response_value")
+                    print("lastIndexOf throws -> Int")
                     print("last throws -> Text")
+                    print("lines -> lines_response_value")
+                    print("prepend -> prepend_response_value")
                     print("reverse -> Text")
+                    print("split -> split_response_value")
+                    print("startsWith -> startsWith_response_value")
+                    print("substring throws -> Text")
                     print("toBase64 -> Text")
                     print("toHex -> Text")
                     print("toText -> Text")
@@ -124,6 +148,22 @@ public struct MutableTextShell
                 print("Error: \(error.localizedDescription).")
             }
         }
+            // f(T)
+            else if command == "become".text
+            {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+                do
+                {
+                    try self.client.become(argument0)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
         // f() -> T (3)
         else if command == "toHex".text
         {
@@ -198,6 +238,206 @@ public struct MutableTextShell
                     print("Error: \(error.localizedDescription).")
                 }
             }
+        // f(S) -> T 1
+        else if command == "substring".text
+        {
+            let text0 = arguments[0]
+            let argument0: Int = Int(string: text0.string)
+            let text1 = arguments[1]
+            let argument1: Int = Int(string: text1.string)
+
+            do
+            {
+                let result = try self.client.substring(argument0, argument1)
+                print(result)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) throws
+        else if command == "becomeSubstring".text
+        {
+            let text0 = arguments[0]
+            let argument0: Int = Int(string: text0.string)
+            let text1 = arguments[1]
+            let argument1: Int = Int(string: text1.string)
+
+            do
+            {
+                try self.client.becomeSubstring(argument0, argument1)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) -> T 1
+        else if command == "indexOf".text
+        {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+            do
+            {
+                let result = try self.client.indexOf(argument0)
+                print(result)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) -> T 1
+        else if command == "lastIndexOf".text
+        {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+            do
+            {
+                let result = try self.client.lastIndexOf(argument0)
+                print(result)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+            // f(S) -> T 2
+            else if command == "split".text
+            {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+                do
+                {
+                    let result = try self.client.split(argument0)
+                    print(result)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+        // f(S) throws
+        else if command == "becomeSplit".text
+        {
+            let argument0 = arguments[0]
+            let text1 = arguments[1]
+            let argument1: Int = Int(string: text1.string)
+
+            do
+            {
+                try self.client.becomeSplit(argument0, argument1)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) throws
+        else if command == "becomeSplitOnHead".text
+        {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+            do
+            {
+                try self.client.becomeSplitOnHead(argument0)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) throws
+        else if command == "becomeSplitOnTail".text
+        {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+            do
+            {
+                try self.client.becomeSplitOnTail(argument0)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) throws
+        else if command == "becomeSplitOnLastHead".text
+        {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+            do
+            {
+                try self.client.becomeSplitOnLastHead(argument0)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) throws
+        else if command == "becomeSplitOnLastTail".text
+        {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+            do
+            {
+                try self.client.becomeSplitOnLastTail(argument0)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) throws
+        else if command == "becomeSplitAtHead".text
+        {
+            let text0 = arguments[0]
+            let argument0: Int = Int(string: text0.string)
+            let text1 = arguments[1]
+            let argument1: Int = Int(string: text1.string)
+
+            do
+            {
+                try self.client.becomeSplitAtHead(argument0, argument1)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) throws
+        else if command == "becomeSplitAtTail".text
+        {
+            let text0 = arguments[0]
+            let argument0: Int = Int(string: text0.string)
+            let text1 = arguments[1]
+            let argument1: Int = Int(string: text1.string)
+
+            do
+            {
+                try self.client.becomeSplitAtTail(argument0, argument1)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
         // f() -> T (3)
         else if command == "trim".text
         {
@@ -217,6 +457,135 @@ public struct MutableTextShell
                 do
                 {
                     try self.client.becomeTrimmed()
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(S) -> T 2
+            else if command == "join".text
+            {
+                let parameters = arguments
+
+                do
+                {
+                    let result = try self.client.join(parameters)
+                    print(result)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(T)
+            else if command == "becomeJoined".text
+            {
+                let parameters = arguments
+
+                do
+                {
+                    try self.client.becomeJoined(parameters)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(S) -> T 2
+            else if command == "prepend".text
+            {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+                do
+                {
+                    let result = try self.client.prepend(argument0)
+                    print(result)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(S) -> T 2
+            else if command == "append".text
+            {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+                do
+                {
+                    let result = try self.client.append(argument0)
+                    print(result)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(T)
+            else if command == "becomePrepended".text
+            {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+                do
+                {
+                    try self.client.becomePrepended(argument0)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(T)
+            else if command == "becomeAppended".text
+            {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+                do
+                {
+                    try self.client.becomeAppended(argument0)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(S) -> T 2
+            else if command == "containsSubstring".text
+            {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+                do
+                {
+                    let result = try self.client.containsSubstring(argument0)
+                    print(result)
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(S) -> T 2
+            else if command == "startsWith".text
+            {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+                do
+                {
+                    let result = try self.client.startsWith(argument0)
+                    print(result)
                 }
                 catch
                 {
@@ -274,6 +643,39 @@ public struct MutableTextShell
                     print("Error: \(error.localizedDescription).")
                 }
             }
+        // f(S) -> T 1
+        else if command == "dropPrefix".text
+        {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+            do
+            {
+                let result = try self.client.dropPrefix(argument0)
+                print(result)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
+        // f(S) throws
+        else if command == "becomeDropPrefix".text
+        {
+                let text0 = arguments[0]
+
+                let argument0: Text = text0
+
+            do
+            {
+                try self.client.becomeDropPrefix(argument0)
+            }
+            catch
+            {
+                print("Error: \(error.localizedDescription).")
+            }
+        }
         // f() -> T (3)
         else if command == "uppercase".text
         {
@@ -318,6 +720,29 @@ public struct MutableTextShell
                 do
                 {
                     try self.client.becomeUppercaseFirstLetter()
+                }
+                catch
+                {
+                    print("Error: \(error.localizedDescription).")
+                }
+            }
+            // f(S) -> T 2
+            else if command == "lines".text
+            {
+                let argument0: Text?
+                if arguments.count == 0
+                {
+                    argument0 = nil
+                }
+                else
+                {
+                    argument0 = arguments[0]
+                }
+
+                do
+                {
+                    let result = try self.client.lines(argument0)
+                    print(result)
                 }
                 catch
                 {

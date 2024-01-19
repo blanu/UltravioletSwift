@@ -2,7 +2,7 @@
 //  main.swift
 //
 //
-//  Created by the Daydream Compiler on 2024-01-16 23:32:18 +0000.
+//  Created by the Daydream Compiler on 2024-01-19 22:58:08 +0000.
 //
 
 import ArgumentParser
